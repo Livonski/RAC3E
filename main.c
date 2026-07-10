@@ -31,8 +31,8 @@ int main(void){
     int64_t dT = timeNow - timePrev;
     srand(timeNow);
 
-    int trianglesCount = 8;
-    triangle triangles[8];
+    int trianglesCount = 32;
+    triangle triangles[32];
     for(int i = 0; i < trianglesCount; i++){
         triangles[i] = triangle_random(WIDTH, HEIGHT);
     }
@@ -46,8 +46,11 @@ int main(void){
             for(int x = 0; x < WIDTH; x++){
                 pC = c_black;
                 for(int i = 0; i < trianglesCount; i++){
-                    bool inside = pointInTriangle(&triangles[i], &v2i_New(x, y));
-                    if(inside) {pC = triangles[i].col; break;}
+                    triangle* triangle = &triangles[i];
+                    v2i p = v2i_New(x, y);
+                    if(!bb_inside(&triangle->bb, p)) continue;
+                    bool inside = pointInTriangle(triangle, p);
+                    if(inside) {pC = triangle->col; break;}
                 }
                 
                 pixels[y * WIDTH + x] = cst32(pC);
