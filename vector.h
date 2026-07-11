@@ -4,17 +4,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef int32_t vectorSize;
-
-//FD
-struct triangle;
+typedef int16_t vectorSize;
 
 //Math utils
 #define clamp(minv, maxv, v) min(max(minv, v),maxv)
 
 //Vector 3 int
-typedef struct
-{
+typedef struct{
     vectorSize x;
     vectorSize y;
     vectorSize z;
@@ -38,14 +34,11 @@ typedef struct{
 } boundingBox;
 
 typedef struct{
-    v2i a;
-    v2i b;
-    v2i c;
+    vectorSize vertices[3];
 
     color col;
 
     boundingBox bb;
-
 } triangle;
 
 
@@ -63,30 +56,24 @@ static inline bool v2i_RightSideOfLine(v2i* a, v2i* b, v2i p){
     return v2i_Dot(ap, abPerp) >= 0;
 }
 
-bool pointInTriangle(triangle* t, v2i p){
+/*bool pointInTriangle(triangle* t, v2i p){
     bool sideAB = v2i_RightSideOfLine(&t->a, &t->b, p);
     bool sideBC = v2i_RightSideOfLine(&t->b, &t->c, p);
     bool sideCA = v2i_RightSideOfLine(&t->c, &t->a, p);
     return sideAB == sideBC && sideBC == sideCA;
-}
+}*/
 
 //triangle related stuff
-static inline triangle triangle_random(int WIDTH, int HEIGHT){
 
-    double w = (double)rand() / (double)RAND_MAX;
-    double h = (double)rand() / (double)RAND_MAX;
-    v2i a = {w * WIDTH,  h * HEIGHT};
+//bounding box related stuff
+static inline bool bb_inside(boundingBox *bb, v2i p){
+    return p.x > bb->bbLL.x &&
+           p.y > bb->bbLL.y &&
+           p.x < bb->bbUR.x &&
+           p.y < bb->bbUR.y;
+}
 
-    w = (double)rand() / (double)RAND_MAX;
-    h = (double)rand() / (double)RAND_MAX;
-    v2i b = {w * WIDTH,  h * HEIGHT};
-
-    w = (double)rand() / (double)RAND_MAX;
-    h = (double)rand() / (double)RAND_MAX;
-    v2i c = {w * WIDTH,  h * HEIGHT};
-
-    color col = crand();
-
+static inline boundingBox bb_calculate(v2i a, v2i b, v2i c, int WIDTH, int HEIGHT){
     vectorSize minX = min(min(a.x, b.x), c.x);
     vectorSize maxX = max(max(a.x, b.x), c.x);
 
@@ -101,17 +88,6 @@ static inline triangle triangle_random(int WIDTH, int HEIGHT){
 
     v2i bbUR = v2i_New(bbURx, bbURy);
     v2i bbLL = v2i_New(bbLLx, bbLLy);
-    boundingBox bb = {bbUR, bbLL};
-
-    return (triangle){a, b, c, col, bb};
+    return (boundingBox){bbUR, bbLL};
 }
-
-//bounding box related stuff
-static inline bool bb_inside(boundingBox *bb, v2i p){
-    return p.x > bb->bbLL.x &&
-           p.y > bb->bbLL.y &&
-           p.x < bb->bbUR.x &&
-           p.y < bb->bbUR.y;
-}
-
 #endif

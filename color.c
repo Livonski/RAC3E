@@ -10,8 +10,7 @@
 #define c_green (color){0, 255, 0}
 #define c_blue  (color){0, 0, 255}
 
-typedef struct
-{
+typedef struct{
     uint8_t r;
     uint8_t g;
     uint8_t b;

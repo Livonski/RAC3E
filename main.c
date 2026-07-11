@@ -10,6 +10,7 @@
 
 #include "color.c"
 #include "vector.h"
+#include "objParser.h"
 
 #define WIDTH 640
 #define HEIGHT 360
@@ -31,40 +32,32 @@ int main(void){
     int64_t dT = timeNow - timePrev;
     srand(timeNow);
 
-    int trianglesCount = 32;
-    triangle triangles[32];
-    for(int i = 0; i < trianglesCount; i++){
-        triangles[i] = triangle_random(WIDTH, HEIGHT);
-    }
-
-
-    color pC;
-
+    Model3D model;
+    readObj("cube.obj", &model);
+    
     while (fenster_loop(&window) == 0)
     {
-        for(int y = 0; y < HEIGHT; y++){
-            for(int x = 0; x < WIDTH; x++){
-                pC = c_black;
-                for(int i = 0; i < trianglesCount; i++){
-                    triangle* triangle = &triangles[i];
-                    v2i p = v2i_New(x, y);
-                    if(!bb_inside(&triangle->bb, p)) continue;
-                    bool inside = pointInTriangle(triangle, p);
-                    if(inside) {pC = triangle->col; break;}
-                }
-                
-                pixels[y * WIDTH + x] = cst32(pC);
+        memset(pixels, 0, WIDTH*HEIGHT*sizeof(uint32_t));
+        /*triangle currentTriangle;
+        for(int i = 0; i < model.t.count; i++){
+            currentTriangle = model.t.items[i];
+            for(int y = currentTriangle.bb.bbLL.y; y < currentTriangle.bb.bbUR.y; y++){
+                for(int x = currentTriangle.bb.bbLL.x; x < currentTriangle.bb.bbUR.x; x++){
+                    if(!pointInTriangle(&model, currentTriangle, v2i_New(x, y))) continue;
+                    pixels[y * WIDTH + x] = cst32(currentTriangle.col);
+                }    
             }
-        }
+        }*/
         
         timePrev = timeNow;
         timeNow = fenster_time();
         dT = timeNow - timePrev;
-
+        
         printf("\r%lld ms, %lld FPS", dT, 1000/dT);
         fflush(stdout);
     }
-
+    
+    model3DFree(&model);
     fenster_close(&window);
     return 0;
 }
