@@ -38,16 +38,15 @@ int main(void){
     while (fenster_loop(&window) == 0)
     {
         memset(pixels, 0, WIDTH*HEIGHT*sizeof(uint32_t));
-        /*triangle currentTriangle;
         for(int i = 0; i < model.t.count; i++){
-            currentTriangle = model.t.items[i];
+            triangle2i currentTriangle = worldToScreenTriangle(&model, model.t.items[i], WIDTH, HEIGHT);
             for(int y = currentTriangle.bb.bbLL.y; y < currentTriangle.bb.bbUR.y; y++){
                 for(int x = currentTriangle.bb.bbLL.x; x < currentTriangle.bb.bbUR.x; x++){
-                    if(!pointInTriangle(&model, currentTriangle, v2i_New(x, y))) continue;
+                    if(!pointInTriangle(currentTriangle, v2i_New(x, y))) continue;
                     pixels[y * WIDTH + x] = cst32(currentTriangle.col);
                 }    
             }
-        }*/
+        }
         
         timePrev = timeNow;
         timeNow = fenster_time();

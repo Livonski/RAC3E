@@ -1,11 +1,22 @@
 #ifndef OBJPARSER_H
 #define OBJPARSER_H
 
-#include <stdlib.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "color.c"
 #include "vector.h"
+
+typedef int32_t vertexIndex;
+
+typedef struct{
+    vectorSize vertices[3];
+    
+    color col;
+} triangle3i;
 
 typedef struct{
     v3i* items;
@@ -14,7 +25,7 @@ typedef struct{
 } vertices;
 
 typedef struct{
-    triangle* items;
+    triangle3i* items;
     vectorSize count;
     vectorSize capacity;
 } triangles;
@@ -29,7 +40,7 @@ typedef struct{
     if(da.count >= da.capacity){\
         if(da.capacity == 0) da.capacity = 256;\
         else da.capacity *= 2;\
-        da.items = realloc(da.items, da.capacity * sizeof(v3i));\
+        da.items = realloc(da.items, da.capacity * sizeof(*da.items));\
     }\
     da.items[da.count++] = e;\
     } while(0)
@@ -44,6 +55,17 @@ typedef struct{
 
 static inline void model3DFree(Model3D* model){
     da_free(model->v);
+    da_free(model->t);
+}
+
+triangle2i worldToScreenTriangle(Model3D* m, triangle3i t3, int WIDTH, int HEIGHT){
+    v2i a = (v2i){m->v.items[t3.vertices[0]].x, m->v.items[t3.vertices[0]].y};
+    v2i b = (v2i){m->v.items[t3.vertices[1]].x, m->v.items[t3.vertices[1]].y};
+    v2i c = (v2i){m->v.items[t3.vertices[2]].x, m->v.items[t3.vertices[2]].y};
+
+    boundingBox bb = bb_calculate(a, b, c, WIDTH, HEIGHT);
+
+    return (triangle2i){.a = a, .b = b, .c = c, .bb = bb, .col = t3.col};
 }
 
 //Only supports obj files that start with o modelName
@@ -51,7 +73,6 @@ static inline void model3DFree(Model3D* model){
 static inline int readObj(const char* filename, Model3D *model){
     FILE* file = fopen(filename, "r");
     if(!file){
-        fclose(file);
         return 1;
     }
 
@@ -90,7 +111,7 @@ static inline int readObj(const char* filename, Model3D *model){
             }
             for(int k = 1; k < faceCount - 1; k++){
                 color c = crand();
-                triangle t = {
+                triangle3i t = {
                     .vertices = {
                         faceIndices[0],
                         faceIndices[k],

@@ -1,13 +1,16 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
-typedef int16_t vectorSize;
+typedef int32_t  vectorSize;
 
 //Math utils
-#define clamp(minv, maxv, v) min(max(minv, v),maxv)
+#define MIN_VALUE(a, b) ((a) < (b) ? (a) : (b))
+#define MAX_VALUE(a, b) ((a) > (b) ? (a) : (b))
+#define clamp(minValue, maxValue, value) \
+    MAX_VALUE((minValue), MIN_VALUE((maxValue), (value)))
 
 //Vector 3 int
 typedef struct{
@@ -34,34 +37,33 @@ typedef struct{
 } boundingBox;
 
 typedef struct{
-    vectorSize vertices[3];
-
+    v2i a;
+    v2i b;
+    v2i c;
+    
     color col;
-
     boundingBox bb;
-} triangle;
-
-
+} triangle2i;
 
 //v2i related stuff
 static inline int64_t v2i_Dot (v2i a, v2i b) { return (int64_t)a.x * b.x + (int64_t)a.y * b.y; }
 static inline v2i     v2i_Perp(v2i v)        { return v2i_New(v.y, -v.x);}
 static inline v2i     v2i_Sub (v2i a, v2i b) { return v2i_New(a.x - b.x, a.y - b.y);}
 
-static inline bool v2i_RightSideOfLine(v2i* a, v2i* b, v2i p){
-    v2i ap = v2i_Sub(p, *a);
-    v2i ab = v2i_Sub(*b, *a);
+static inline bool v2i_RightSideOfLine(v2i a, v2i b, v2i p){
+    v2i ap = v2i_Sub(p, a);
+    v2i ab = v2i_Sub(b, a);
     v2i abPerp = v2i_Perp(ab);
     
     return v2i_Dot(ap, abPerp) >= 0;
 }
 
-/*bool pointInTriangle(triangle* t, v2i p){
-    bool sideAB = v2i_RightSideOfLine(&t->a, &t->b, p);
-    bool sideBC = v2i_RightSideOfLine(&t->b, &t->c, p);
-    bool sideCA = v2i_RightSideOfLine(&t->c, &t->a, p);
+bool pointInTriangle(triangle2i t, v2i p){
+    bool sideAB = v2i_RightSideOfLine(t.a, t.b, p);
+    bool sideBC = v2i_RightSideOfLine(t.b, t.c, p);
+    bool sideCA = v2i_RightSideOfLine(t.c, t.a, p);
     return sideAB == sideBC && sideBC == sideCA;
-}*/
+}
 
 //triangle related stuff
 
@@ -74,20 +76,21 @@ static inline bool bb_inside(boundingBox *bb, v2i p){
 }
 
 static inline boundingBox bb_calculate(v2i a, v2i b, v2i c, int WIDTH, int HEIGHT){
-    vectorSize minX = min(min(a.x, b.x), c.x);
-    vectorSize maxX = max(max(a.x, b.x), c.x);
+    vectorSize minX = MIN_VALUE(MIN_VALUE(a.x, b.x), c.x);
+    vectorSize maxX = MAX_VALUE(MAX_VALUE(a.x, b.x), c.x);
 
-    vectorSize minY = min(min(a.y, b.y), c.y);
-    vectorSize maxY = max(max(a.y, b.y), c.y);
+    vectorSize minY = MIN_VALUE(MIN_VALUE(a.y, b.y), c.y);
+    vectorSize maxY = MAX_VALUE(MAX_VALUE(a.y, b.y), c.y);
 
     vectorSize bbLLx = clamp(0, WIDTH, minX);
     vectorSize bbLLy = clamp(0, HEIGHT, minY);
 
-    vectorSize bbURx = clamp(0, WIDTH, maxX);
-    vectorSize bbURy = clamp(0, HEIGHT, maxY);
+    vectorSize bbURx = clamp(0, WIDTH, maxX + 1);
+    vectorSize bbURy = clamp(0, HEIGHT, maxY + 1);
 
-    v2i bbUR = v2i_New(bbURx, bbURy);
-    v2i bbLL = v2i_New(bbLLx, bbLLy);
-    return (boundingBox){bbUR, bbLL};
+    return (boundingBox){
+        .bbUR = v2i_New(bbURx, bbURy),
+        .bbLL = v2i_New(bbLLx, bbLLy)
+    };
 }
 #endif
