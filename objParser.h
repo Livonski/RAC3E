@@ -48,10 +48,16 @@ typedef struct{
 } model3D;
 
 typedef struct{
+    uint32_t fov;
+
+    float focalLength;
+} camera;
+
+typedef struct{
     int width;
     int height;
-    
-    float focalLength;
+
+    camera cam;
 
     uint32_t* pixels;
 } renderTarget;
@@ -80,13 +86,11 @@ static inline void model3DFree(model3D* model){
 }
 
 static inline void getBasisVectors(v3i* ihat, v3i* jhat, v3i* khat, int32_t yaw, int32_t pitch){
-    const double pi = 3.14159265358979323846;
-
-    double yawR = (double)yaw * pi / 180.0;
+    double yawR = (double)yaw * PI / 180.0;
     int32_t cosYaw = (int32_t)llround(cos(yawR) * BASIS_SCALE);
     int32_t sinYaw = (int32_t)llround(sin(yawR) * BASIS_SCALE);
 
-    double pitchR = (double)pitch * pi / 180.0;
+    double pitchR = (double)pitch * PI / 180.0;
     int32_t cosPitch = (int32_t)llround(cos(pitchR) * BASIS_SCALE);
     int32_t sinPitch = (int32_t)llround(sin(pitchR) * BASIS_SCALE);
 
@@ -116,8 +120,8 @@ static inline bool vertexToScreen(model3D* m, v3i p, renderTarget* rT, v2i* scre
         return false;
     }
 
-    int64_t projectedX = (int64_t)world.x * (int64_t) rT->focalLength / (int64_t)world.z;
-    int64_t projectedY = (int64_t)world.y * (int64_t) rT->focalLength / (int64_t)world.z;
+    int64_t projectedX = (int64_t)world.x * (int64_t) rT->cam.focalLength / (int64_t)world.z;
+    int64_t projectedY = (int64_t)world.y * (int64_t) rT->cam.focalLength / (int64_t)world.z;
 
     int64_t screenX = (int64_t)rT->width / 2 + projectedX;
     int64_t screenY = (int64_t)rT->height / 2 + projectedY;

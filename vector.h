@@ -13,6 +13,7 @@ typedef int32_t  vectorSize;
     MAX_VALUE((minValue), MIN_VALUE((maxValue), (value)))
 
 #define BASIS_SCALE 10000
+#define PI 3.14159265358979323846
 
 //Vector 3 int
 typedef struct{

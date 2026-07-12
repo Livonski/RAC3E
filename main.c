@@ -16,8 +16,14 @@ int main(void){
     int width  = 640;
     int height = 360;
 
+    camera cam = {.fov = 60};
+
     uint32_t p[width * height];
-    renderTarget rT = {.width = width, .height = height, .pixels = p, .focalLength = 300};
+    renderTarget rT = {.width = width, .height = height, .pixels = p, .cam = cam};
+    float fovRadians = (float)rT.cam.fov * PI / 180.0f;
+    
+    rT.cam.focalLength = (float)height / (tan(fovRadians / 2) * 2);
+
 
     struct fenster window = {
         .title = "RAC3E",
@@ -36,9 +42,9 @@ int main(void){
 
     srand(timeNow);
 
-    model3D model = {.scale = 1, .wPos = (v3i){0, 0, 400}, .yaw = 0, .pitch = 180};
-    readObj("cube.obj", &model, 100);
-    //readObj("monkey.obj", &model, 100);
+    model3D model = {.scale = 1, .wPos = (v3i){0, 0, 300}, .yaw = 0, .pitch = 180};
+    //readObj("cube.obj", &model, 100);
+    readObj("monkey.obj", &model, 100);
 
     while (fenster_loop(&window) == 0)
     {
@@ -47,9 +53,9 @@ int main(void){
         dT = timeNow - timePrev;
         
         if(timeNow - lastRotationTime >= 50){
-            model.wPos.z += 10;
+            //model.wPos.z += 10;
             model.yaw += 1;
-            model.pitch += 1;
+            //model.pitch += 1;
     
             if (model.yaw >= 360) {
                 model.yaw -= 360;
