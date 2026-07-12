@@ -38,6 +38,7 @@ typedef struct{
     v3i wPos;
 
     int32_t yaw;
+    int32_t pitch;
 
     v3i ihat;
     v3i jhat;
@@ -78,16 +79,28 @@ static inline void model3DFree(model3D* model){
     da_free(model->t);
 }
 
-static inline void getBasisVectors(v3i* ihat, v3i* jhat, v3i* khat, int32_t yaw){
+static inline void getBasisVectors(v3i* ihat, v3i* jhat, v3i* khat, int32_t yaw, int32_t pitch){
     const double pi = 3.14159265358979323846;
 
     double yawR = (double)yaw * pi / 180.0;
     int32_t cosYaw = (int32_t)llround(cos(yawR) * BASIS_SCALE);
     int32_t sinYaw = (int32_t)llround(sin(yawR) * BASIS_SCALE);
 
-    *ihat = v3i_New(cosYaw, 0, sinYaw);
-    *jhat = v3i_New(0, BASIS_SCALE, 0);
-    *khat = v3i_New(-sinYaw, 0, cosYaw);
+    double pitchR = (double)pitch * pi / 180.0;
+    int32_t cosPitch = (int32_t)llround(cos(pitchR) * BASIS_SCALE);
+    int32_t sinPitch = (int32_t)llround(sin(pitchR) * BASIS_SCALE);
+
+    v3i ihat_yaw = v3i_New(cosYaw, 0, sinYaw);
+    v3i jhat_yaw = v3i_New(0, BASIS_SCALE, 0);
+    v3i khat_yaw = v3i_New(-sinYaw, 0, cosYaw);
+
+    v3i ihat_pitch = v3i_New(BASIS_SCALE, 0, 0);
+    v3i jhat_pitch = v3i_New(0, cosPitch, -sinPitch);
+    v3i khat_pitch = v3i_New(0, sinPitch, cosPitch);
+
+    *ihat = v3i_Transform(&ihat_yaw, &jhat_yaw, &khat_yaw, ihat_pitch);
+    *jhat = v3i_Transform(&ihat_yaw, &jhat_yaw, &khat_yaw, jhat_pitch);
+    *khat = v3i_Transform(&ihat_yaw, &jhat_yaw, &khat_yaw, khat_pitch);
 }
 
 static inline v3i vertexToWorld(model3D* m, v3i v){

@@ -33,29 +33,37 @@ int main(void){
     int64_t timeNow  = timePrev;
     int64_t dT = timeNow - timePrev;
     int64_t lastStatsTime = fenster_time();
+    int64_t lastRotationTime = fenster_time();
 
     srand(timeNow);
 
-    model3D model = {.scale = 1, .wPos = (v3i){0, 0, 0}, .yaw = 0};
-    readObj("cube.obj", &model, 100);
-    
+    model3D model = {.scale = 1, .wPos = (v3i){0, 0, 0}, .yaw = 0, .pitch = 180};
+    //readObj("cube.obj", &model, 100);
+    readObj("monkey.obj", &model, 100);
+
     while (fenster_loop(&window) == 0)
     {
         timePrev = timeNow;
         timeNow = fenster_time();
         dT = timeNow - timePrev;
         
-        model.yaw += 1;
-
-        if (model.yaw >= 360) {
-            model.yaw -= 360;
+        if(timeNow - lastRotationTime >= 50){
+            model.yaw += 1;
+            //model.pitch += 1;
+    
+            if (model.yaw >= 360) {
+                model.yaw -= 360;
+            }
+            getBasisVectors(
+                &model.ihat,
+                &model.jhat,
+                &model.khat,
+                model.yaw,
+                model.pitch
+            );
+            lastRotationTime = timeNow;
         }
-        getBasisVectors(
-            &model.ihat,
-            &model.jhat,
-            &model.khat,
-            model.yaw
-        );
+
         
         memset(rT.pixels, 0, rT.width*rT.height*sizeof(uint32_t));
         for(int i = 0; i < model.t.count; i++){

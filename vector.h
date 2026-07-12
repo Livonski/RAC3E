@@ -110,7 +110,7 @@ static inline bool pointInTriangle(triangle2i t, v2i p){
     bool sideAB = v2i_RightSideOfLine(t.a, t.b, p);
     bool sideBC = v2i_RightSideOfLine(t.b, t.c, p);
     bool sideCA = v2i_RightSideOfLine(t.c, t.a, p);
-    return sideAB && sideBC && sideBC;
+    return sideAB && sideBC && sideCA;
 }
 
 
