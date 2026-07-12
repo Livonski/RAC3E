@@ -60,6 +60,7 @@ typedef struct{
     camera cam;
 
     uint32_t* pixels;
+    uint32_t* depthBuffer;
 } renderTarget;
 
 #define da_append(da, e)\
@@ -112,7 +113,7 @@ static inline v3i vertexToWorld(model3D* m, v3i v){
     return v3i_Add(rotated, m->wPos);
 }
 
-static inline bool vertexToScreen(model3D* m, v3i p, renderTarget* rT, v2i* screenPosition){
+static inline bool vertexToScreen(model3D* m, v3i p, renderTarget* rT, v3i* screenPosition){
     v3i world = vertexToWorld(m, p);
 
     const int32_t nearPlane = 1;
@@ -135,15 +136,15 @@ static inline bool vertexToScreen(model3D* m, v3i p, renderTarget* rT, v2i* scre
         return false;
     }
 
-    *screenPosition = v2i_New(screenX, screenY);
+    *screenPosition = v3i_New(screenX, screenY, world.z);
 
     return true;
 }
 
-static inline bool triangleToScreen(model3D* m, triangle3i t3, renderTarget* rT, triangle2i* screenTriangle){
-    v2i a;
-    v2i b;
-    v2i c;
+static inline bool triangleToScreen(model3D* m, triangle3i t3, renderTarget* rT, triangle3iS* screenTriangle){
+    v3i a;
+    v3i b;
+    v3i c;
     
     bool aVisible = vertexToScreen(m, m->v.items[t3.vertices[0]], rT, &a);
     bool bVisible = vertexToScreen(m, m->v.items[t3.vertices[1]], rT, &b);
@@ -155,7 +156,7 @@ static inline bool triangleToScreen(model3D* m, triangle3i t3, renderTarget* rT,
 
     boundingBox bb = bb_calculate(a, b, c, rT->width, rT->height);
 
-    *screenTriangle =  (triangle2i){.a = a, .b = b, .c = c, .bb = bb, .col = t3.col};
+    *screenTriangle =  (triangle3iS){.a = a, .b = b, .c = c, .bb = bb, .col = t3.col};
 
     return true;
 }

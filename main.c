@@ -15,21 +15,22 @@
 int main(void){
     int width  = 640;
     int height = 360;
+    size_t pixelCount = (size_t)width * (size_t)height;
 
     camera cam = {.fov = 60};
 
-    uint32_t p[width * height];
-    renderTarget rT = {.width = width, .height = height, .pixels = p, .cam = cam};
+    uint32_t* p = calloc(pixelCount, sizeof(*p));
+    uint32_t* db = malloc(pixelCount * sizeof(*db));
+    renderTarget rT = {.width = width, .height = height, .pixels = p, .depthBuffer = db, .cam = cam};
     float fovRadians = (float)rT.cam.fov * PI / 180.0f;
     
     rT.cam.focalLength = (float)height / (tan(fovRadians / 2) * 2);
-
 
     struct fenster window = {
         .title = "RAC3E",
         .width = rT.width,
         .height = rT.height,
-        .buf = rT.pixels
+        .buf = rT.depthBuffer
     };
 
     fenster_open(&window);
@@ -72,15 +73,26 @@ int main(void){
 
         
         memset(rT.pixels, 0, rT.width*rT.height*sizeof(uint32_t));
+
+        for (size_t i = 0; i < pixelCount; i++) {
+            rT.depthBuffer[i] = UINT32_MAX;
+        }
+
         for(int i = 0; i < model.t.count; i++){
-            triangle2i currentTriangle;
+            triangle3iS currentTriangle;
+            v3f weights;
             if(!triangleToScreen(&model, model.t.items[i], &rT, &currentTriangle)) continue;
             //BUG: if triangle goes completely outside of view space program will crash
             //probably due to going out of bounds or something
             for(int y = currentTriangle.bb.bbLL.y; y < currentTriangle.bb.bbUR.y; y++){
                 for(int x = currentTriangle.bb.bbLL.x; x < currentTriangle.bb.bbUR.x; x++){
-                    if(!pointInTriangle(currentTriangle, v2i_New(x, y))) continue;
-                    rT.pixels[y * rT.width + x] = cst32(currentTriangle.col);
+                    if(pointInTriangle(currentTriangle, v2i_New(x, y), &weights)){
+                        v3f depths = v3f_New(currentTriangle.a.z, currentTriangle.b.z, currentTriangle.c.z);
+                        float depth = v3f_Dot(depths, weights);
+                        if(depth > rT.depthBuffer[y * rT.width + x]) continue;
+                        rT.pixels[y * rT.width + x] = cst32(currentTriangle.col);
+                        rT.depthBuffer[y * rT.width + x] = depth;
+                    }
                 }    
             }
         }
@@ -105,5 +117,8 @@ int main(void){
     
     model3DFree(&model);
     fenster_close(&window);
+
+    free(rT.depthBuffer);
+    free(rT.pixels);
     return 0;
 }

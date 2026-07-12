@@ -16,6 +16,10 @@ typedef struct{
     uint8_t b;
 } color;
 
+static inline uint32_t v3fTst32(float x, float y, float z){
+    return ((uint32_t)x << 16) | ((uint32_t)y << 8) | (uint32_t)z;
+}
+
 static inline uint32_t cst32(color c){
     return ((uint32_t)c.r << 16) | ((uint32_t)c.g << 8) | c.b;
 }

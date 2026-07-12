@@ -59,13 +59,13 @@ typedef struct{
 } boundingBox;
 
 typedef struct{
-    v2i a;
-    v2i b;
-    v2i c;
+    v3i a;
+    v3i b;
+    v3i c;
     
     color col;
     boundingBox bb;
-} triangle2i;
+} triangle3iS;
 
 //v2i related stuff
 static inline int64_t v2i_Dot (v2i a, v2i b)        { return (int64_t)a.x * b.x + (int64_t)a.y * b.y; }
@@ -74,18 +74,12 @@ static inline v2i     v2i_Sub (v2i a, v2i b)        { return v2i_New(a.x - b.x, 
 static inline v2i     v2i_Add (v2i a, v2i b)        { return v2i_New(a.x + b.x, a.y + b.y);}
 static inline v2i     v2i_DivS(v2i v, vectorSize s) { return v2i_New(v.x / s, v.y / s);}
 
-static inline bool v2i_RightSideOfLine(v2i a, v2i b, v2i p){
-    v2i ap = v2i_Sub(p, a);
-    v2i ab = v2i_Sub(b, a);
-    v2i abPerp = v2i_Perp(ab);
-    
-    return v2i_Dot(ap, abPerp) >= 0;
-}
-
 //v3i related stuff
-static inline v3i v3i_MulS(v3i v, vectorSize s) {return v3i_New(v.x * s, v.y * s, v.z * s);}
-static inline v3i v3i_Add (v3i a, v3i b)        {return v3i_New(a.x + b.x, a.y + b.y, a.z + b.z);}
-static inline v3i v3i_Add3(v3i a, v3i b, v3i c) {return v3i_Add(v3i_Add(a, b), c);}
+static inline int64_t v3i_Dot(v3i a, v3i b)        { return (int64_t)a.x * b.x + (int64_t)a.y * b.y + (int64_t)a.z * b.z; }
+static inline v3i v3i_MulS   (v3i v, vectorSize s) {return v3i_New(v.x * s, v.y * s, v.z * s);}
+static inline v3i v3i_Add    (v3i a, v3i b)        {return v3i_New(a.x + b.x, a.y + b.y, a.z + b.z);}
+static inline v3i v3i_Add3   (v3i a, v3i b, v3i c) {return v3i_Add(v3i_Add(a, b), c);}
+static inline v2i v3i_To_v2i (v3i s)               {return v2i_New(s.x, s.y);}
 
 #define bs_Center(v) if(v >= 0) {v += BASIS_SCALE / 2;} else {v -= BASIS_SCALE / 2;}
 
@@ -102,16 +96,33 @@ static inline v3i v3i_Transform(const v3i* ihat, const v3i* jhat, const v3i* kha
 }
 
 //v3f related stuff
-static inline v3f v3f_MulS(v3f v, float s) {return v3f_New(v.x * s, v.y * s, v.z * s);}
-static inline v3f v3f_Add (v3f a, v3f b)   {return v3f_New(a.x + b.x, a.y + b.y, a.z + b.z);}
-static inline v3f v3f_Add3(v3f a, v3f b, v3f c) {return v3f_Add(v3f_Add(a, b), c);}
+static inline float v3f_Dot(v3f a, v3f b)        { return (float)a.x * b.x + (float)a.y * b.y + (float)a.z * b.z; }
+static inline v3f v3f_MulS (v3f v, float s) {return v3f_New(v.x * s, v.y * s, v.z * s);}
+static inline v3f v3f_Add  (v3f a, v3f b)   {return v3f_New(a.x + b.x, a.y + b.y, a.z + b.z);}
+static inline v3f v3f_Add3 (v3f a, v3f b, v3f c) {return v3f_Add(v3f_Add(a, b), c);}
 
 //triangle related stuff
-static inline bool pointInTriangle(triangle2i t, v2i p){
-    bool sideAB = v2i_RightSideOfLine(t.a, t.b, p);
-    bool sideBC = v2i_RightSideOfLine(t.b, t.c, p);
-    bool sideCA = v2i_RightSideOfLine(t.c, t.a, p);
-    return sideAB && sideBC && sideCA;
+static inline int32_t SignedTriangleArea(v2i a, v2i b, v2i c){
+    v2i ac = v2i_Sub(a, c);
+    v2i abPerp = v2i_Perp(v2i_Sub(b, a));
+    return v2i_Dot(ac, abPerp) / 2;
+}
+
+static inline bool pointInTriangle(triangle3iS t, v2i p, v3f* weights){
+    int32_t areaABP = SignedTriangleArea(v3i_To_v2i(t.a), v3i_To_v2i(t.b), p);
+    int32_t areaBCP = SignedTriangleArea(v3i_To_v2i(t.b), v3i_To_v2i(t.c), p);
+    int32_t areaCAP = SignedTriangleArea(v3i_To_v2i(t.c), v3i_To_v2i(t.a), p);
+
+    bool inTri = areaABP >= 0 && areaBCP >= 0 && areaCAP >= 0;
+
+    float invAreaSum = 1 / (areaABP + areaBCP + areaCAP);
+    float weightA = areaBCP * invAreaSum;
+    float weightB = areaCAP * invAreaSum;
+    float weightC = areaABP * invAreaSum;
+
+    *weights = v3f_New(weightA, weightB, weightC);
+
+    return inTri;
 }
 
 
@@ -123,7 +134,7 @@ static inline bool bb_inside(boundingBox *bb, v2i p){
            p.y < bb->bbUR.y;
 }
 
-static inline boundingBox bb_calculate(v2i a, v2i b, v2i c, int WIDTH, int HEIGHT){
+static inline boundingBox bb_calculate(v3i a, v3i b, v3i c, int WIDTH, int HEIGHT){
     vectorSize minX = MIN_VALUE(MIN_VALUE(a.x, b.x), c.x);
     vectorSize maxX = MAX_VALUE(MAX_VALUE(a.x, b.x), c.x);
 
