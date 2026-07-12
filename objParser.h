@@ -51,7 +51,7 @@ typedef struct{
     int width;
     int height;
     
-    float PPWU;
+    float focalLength;
 
     uint32_t* pixels;
 } renderTarget;
@@ -108,23 +108,52 @@ static inline v3i vertexToWorld(model3D* m, v3i v){
     return v3i_Add(rotated, m->wPos);
 }
 
-static inline v2i vertexToScreen(model3D* m, v3i p, renderTarget* rT){
+static inline bool vertexToScreen(model3D* m, v3i p, renderTarget* rT, v2i* screenPosition){
     v3i world = vertexToWorld(m, p);
 
-    int32_t screenX = rT->width / 2 + world.x * rT->PPWU;
-    int32_t screenY = rT->height / 2 + world.y * rT->PPWU;
+    const int32_t nearPlane = 1;
+    if(world.z <= nearPlane){
+        return false;
+    }
+
+    int64_t projectedX = (int64_t)world.x * (int64_t) rT->focalLength / (int64_t)world.z;
+    int64_t projectedY = (int64_t)world.y * (int64_t) rT->focalLength / (int64_t)world.z;
+
+    int64_t screenX = (int64_t)rT->width / 2 + projectedX;
+    int64_t screenY = (int64_t)rT->height / 2 + projectedY;
     
-    return v2i_New(screenX, screenY);
+    if (
+        screenX < INT32_MIN ||
+        screenX > INT32_MAX ||
+        screenY < INT32_MIN ||
+        screenY > INT32_MAX
+    ) {
+        return false;
+    }
+
+    *screenPosition = v2i_New(screenX, screenY);
+
+    return true;
 }
 
-static inline triangle2i triangleToScreen(model3D* m, triangle3i t3, renderTarget* rT){
-    v2i a = vertexToScreen(m, m->v.items[t3.vertices[0]], rT);
-    v2i b = vertexToScreen(m, m->v.items[t3.vertices[1]], rT);
-    v2i c = vertexToScreen(m, m->v.items[t3.vertices[2]], rT);
+static inline bool triangleToScreen(model3D* m, triangle3i t3, renderTarget* rT, triangle2i* screenTriangle){
+    v2i a;
+    v2i b;
+    v2i c;
     
+    bool aVisible = vertexToScreen(m, m->v.items[t3.vertices[0]], rT, &a);
+    bool bVisible = vertexToScreen(m, m->v.items[t3.vertices[1]], rT, &b);
+    bool cVisible = vertexToScreen(m, m->v.items[t3.vertices[2]], rT, &c);
+    
+    if (!aVisible || !bVisible || !cVisible) {
+        return false;
+    }
+
     boundingBox bb = bb_calculate(a, b, c, rT->width, rT->height);
 
-    return (triangle2i){.a = a, .b = b, .c = c, .bb = bb, .col = t3.col};
+    *screenTriangle =  (triangle2i){.a = a, .b = b, .c = c, .bb = bb, .col = t3.col};
+
+    return true;
 }
 
 //Only supports obj files that start with o modelName

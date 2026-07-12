@@ -15,10 +15,9 @@
 int main(void){
     int width  = 640;
     int height = 360;
-    int sHeightWorld = 200;
 
     uint32_t p[width * height];
-    renderTarget rT = {.width = width, .height = height, .pixels = p, .PPWU = height / sHeightWorld};
+    renderTarget rT = {.width = width, .height = height, .pixels = p, .focalLength = 300};
 
     struct fenster window = {
         .title = "RAC3E",
@@ -37,9 +36,9 @@ int main(void){
 
     srand(timeNow);
 
-    model3D model = {.scale = 1, .wPos = (v3i){0, 0, 0}, .yaw = 0, .pitch = 180};
-    //readObj("cube.obj", &model, 100);
-    readObj("monkey.obj", &model, 100);
+    model3D model = {.scale = 1, .wPos = (v3i){0, 0, 400}, .yaw = 0, .pitch = 180};
+    readObj("cube.obj", &model, 100);
+    //readObj("monkey.obj", &model, 100);
 
     while (fenster_loop(&window) == 0)
     {
@@ -48,8 +47,9 @@ int main(void){
         dT = timeNow - timePrev;
         
         if(timeNow - lastRotationTime >= 50){
+            model.wPos.z += 10;
             model.yaw += 1;
-            //model.pitch += 1;
+            model.pitch += 1;
     
             if (model.yaw >= 360) {
                 model.yaw -= 360;
@@ -67,7 +67,8 @@ int main(void){
         
         memset(rT.pixels, 0, rT.width*rT.height*sizeof(uint32_t));
         for(int i = 0; i < model.t.count; i++){
-            triangle2i currentTriangle = triangleToScreen(&model, model.t.items[i], &rT);
+            triangle2i currentTriangle;
+            if(!triangleToScreen(&model, model.t.items[i], &rT, &currentTriangle)) continue;
             //BUG: if triangle goes completely outside of view space program will crash
             //probably due to going out of bounds or something
             for(int y = currentTriangle.bb.bbLL.y; y < currentTriangle.bb.bbUR.y; y++){
