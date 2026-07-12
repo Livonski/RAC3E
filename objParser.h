@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "color.c"
 #include "vector.h"
@@ -33,7 +34,22 @@ typedef struct{
 typedef struct{
     vertices v;
     triangles t;
-} Model3D;
+
+    v3i wPos;
+
+    float yaw;
+
+    size_t scale;
+} model3D;
+
+typedef struct{
+    int width;
+    int height;
+    
+    int PPWU;
+
+    uint32_t* pixels;
+} renderTarget;
 
 #define da_append(da, e)\
     do{\
@@ -51,26 +67,47 @@ typedef struct{
     da.items = NULL;\
     da.count = 0;\
     da.capacity = 0;\
-    } while(0)
+} while(0)
 
-static inline void model3DFree(Model3D* model){
+static inline void model3DFree(model3D* model){
     da_free(model->v);
     da_free(model->t);
 }
 
-triangle2i worldToScreenTriangle(Model3D* m, triangle3i t3, int WIDTH, int HEIGHT){
-    v2i a = (v2i){m->v.items[t3.vertices[0]].x, m->v.items[t3.vertices[0]].y};
-    v2i b = (v2i){m->v.items[t3.vertices[1]].x, m->v.items[t3.vertices[1]].y};
-    v2i c = (v2i){m->v.items[t3.vertices[2]].x, m->v.items[t3.vertices[2]].y};
+void getBasisVectors(v3f* ihat, v3f* jhat, v3f* khat, float yaw){
+    *ihat = v3f_New(cosf(yaw), 0, sinf(yaw));
+    *jhat = v3f_New(0, 1, 0);
+    *khat = v3f_New(-sinf(yaw), 0, cosf(yaw));
+}
 
-    boundingBox bb = bb_calculate(a, b, c, WIDTH, HEIGHT);
+static inline v3f vertexToWorld(model3D* m, v3i v){
+    v3f ihat; v3f jhat; v3f khat;
+    getBasisVectors(&ihat, &jhat, &khat, m->yaw);
+
+    v3f p = v3f_New(v.x, v.y, v.z);
+    return v3f_Transform(&ihat, &jhat, &khat, p);
+}
+
+v2i vertexToScreen(model3D* m, v3i p, renderTarget* rT){
+    v3f world = vertexToWorld(m, p);
+
+    v2i vertexScreen = (v2i){(world.x + m->wPos.x) * rT->PPWU, (world.y + m->wPos.y) * rT->PPWU};
+    return v2i_Add(v2i_New(rT->width / 2, rT->height / 2), vertexScreen);
+}
+
+triangle2i triangleToScreen(model3D* m, triangle3i t3, renderTarget* rT){
+    v2i a = vertexToScreen(m, m->v.items[t3.vertices[0]], rT);
+    v2i b = vertexToScreen(m, m->v.items[t3.vertices[1]], rT);
+    v2i c = vertexToScreen(m, m->v.items[t3.vertices[2]], rT);
+    
+    boundingBox bb = bb_calculate(a, b, c, rT->width, rT->height);
 
     return (triangle2i){.a = a, .b = b, .c = c, .bb = bb, .col = t3.col};
 }
 
 //Only supports obj files that start with o modelName
 //Supports only files with single object
-static inline int readObj(const char* filename, Model3D *model){
+static inline int readObj(const char* filename, model3D *model, size_t mReadScale){
     FILE* file = fopen(filename, "r");
     if(!file){
         return 1;
@@ -88,7 +125,7 @@ static inline int readObj(const char* filename, Model3D *model){
             float z;
 
             if(sscanf_s(line + 2, "%f %f %f", &x, &y, &z) == 3){
-                v3i p = {(vectorSize)(x*100), (vectorSize)(y*100), (vectorSize)(z*100)};
+                v3i p = {(vectorSize)(x*mReadScale), (vectorSize)(y*mReadScale), (vectorSize)(z*mReadScale)};
                 da_append(model->v, p);
             }
         }
@@ -126,14 +163,6 @@ static inline int readObj(const char* filename, Model3D *model){
             free(tmp);
         }
     }
-
-    for(int i = 0; i < model->v.count; i++){
-        printf("%d %d %d\n", model->v.items[i].x, model->v.items[i].y, model->v.items[i].z);
-    }
-    for(int i = 0; i < model->t.count; i++){
-        printf("%d/%d/%d\n", model->t.items[i].vertices[0], model->t.items[i].vertices[1], model->t.items[i].vertices[2]);
-    }
-
     fclose(file);
     return 0;
 }
