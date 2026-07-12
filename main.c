@@ -32,9 +32,11 @@ int main(void){
     int64_t timePrev = fenster_time();
     int64_t timeNow  = timePrev;
     int64_t dT = timeNow - timePrev;
+    int64_t lastStatsTime = fenster_time();
+
     srand(timeNow);
 
-    model3D model = {.scale = 1, .wPos = (v3i){0, 0, 0}};
+    model3D model = {.scale = 1, .wPos = (v3i){0, 0, 0}, .yaw = 0};
     readObj("cube.obj", &model, 100);
     
     while (fenster_loop(&window) == 0)
@@ -42,13 +44,19 @@ int main(void){
         timePrev = timeNow;
         timeNow = fenster_time();
         dT = timeNow - timePrev;
+        
+        model.yaw += 1;
 
-        float deltaSeconds = (float)dT / 1000.0f;
-        model.yaw += 1.0f * deltaSeconds;
-
-        if (model.yaw >= 2.0f * PI)
-            model.yaw -= 2.0f * PI;
-
+        if (model.yaw >= 360) {
+            model.yaw -= 360;
+        }
+        getBasisVectors(
+            &model.ihat,
+            &model.jhat,
+            &model.khat,
+            model.yaw
+        );
+        
         memset(rT.pixels, 0, rT.width*rT.height*sizeof(uint32_t));
         for(int i = 0; i < model.t.count; i++){
             triangle2i currentTriangle = triangleToScreen(&model, model.t.items[i], &rT);
@@ -61,11 +69,23 @@ int main(void){
                 }    
             }
         }
-
-
         
-        printf("\r%lld ms, %lld FPS, %d(triangles)", dT, 1000/dT, model.t.count);
-        fflush(stdout);
+        
+        
+        if (timeNow - lastStatsTime >= 500)
+        {
+            int64_t fps = dT > 0 ? 1000 / dT : 0;
+
+            printf(
+                "\r%lld ms, %lld FPS, %d triangles",
+                dT,
+                fps,
+                model.t.count
+            );
+
+            fflush(stdout);
+            lastStatsTime = timeNow;
+        }
     }
     
     model3DFree(&model);

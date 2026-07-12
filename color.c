@@ -20,7 +20,7 @@ static inline uint32_t cst32(color c){
     return ((uint32_t)c.r << 16) | ((uint32_t)c.g << 8) | c.b;
 }
 
-uint32_t ct32(uint8_t r, uint8_t g, uint8_t b){
+static inline uint32_t ct32(uint8_t r, uint8_t g, uint8_t b){
     return ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
 }
 

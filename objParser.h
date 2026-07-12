@@ -37,7 +37,11 @@ typedef struct{
 
     v3i wPos;
 
-    float yaw;
+    int32_t yaw;
+
+    v3i ihat;
+    v3i jhat;
+    v3i khat;
 
     size_t scale;
 } model3D;
@@ -46,7 +50,7 @@ typedef struct{
     int width;
     int height;
     
-    int PPWU;
+    float PPWU;
 
     uint32_t* pixels;
 } renderTarget;
@@ -74,28 +78,33 @@ static inline void model3DFree(model3D* model){
     da_free(model->t);
 }
 
-void getBasisVectors(v3f* ihat, v3f* jhat, v3f* khat, float yaw){
-    *ihat = v3f_New(cosf(yaw), 0, sinf(yaw));
-    *jhat = v3f_New(0, 1, 0);
-    *khat = v3f_New(-sinf(yaw), 0, cosf(yaw));
+static inline void getBasisVectors(v3i* ihat, v3i* jhat, v3i* khat, int32_t yaw){
+    const double pi = 3.14159265358979323846;
+
+    double yawR = (double)yaw * pi / 180.0;
+    int32_t cosYaw = (int32_t)llround(cos(yawR) * BASIS_SCALE);
+    int32_t sinYaw = (int32_t)llround(sin(yawR) * BASIS_SCALE);
+
+    *ihat = v3i_New(cosYaw, 0, sinYaw);
+    *jhat = v3i_New(0, BASIS_SCALE, 0);
+    *khat = v3i_New(-sinYaw, 0, cosYaw);
 }
 
-static inline v3f vertexToWorld(model3D* m, v3i v){
-    v3f ihat; v3f jhat; v3f khat;
-    getBasisVectors(&ihat, &jhat, &khat, m->yaw);
-
-    v3f p = v3f_New(v.x, v.y, v.z);
-    return v3f_Transform(&ihat, &jhat, &khat, p);
+static inline v3i vertexToWorld(model3D* m, v3i v){
+    v3i rotated = v3i_Transform(&m->ihat, &m->jhat, &m->khat, v);
+    return v3i_Add(rotated, m->wPos);
 }
 
-v2i vertexToScreen(model3D* m, v3i p, renderTarget* rT){
-    v3f world = vertexToWorld(m, p);
+static inline v2i vertexToScreen(model3D* m, v3i p, renderTarget* rT){
+    v3i world = vertexToWorld(m, p);
 
-    v2i vertexScreen = (v2i){(world.x + m->wPos.x) * rT->PPWU, (world.y + m->wPos.y) * rT->PPWU};
-    return v2i_Add(v2i_New(rT->width / 2, rT->height / 2), vertexScreen);
+    int32_t screenX = rT->width / 2 + world.x * rT->PPWU;
+    int32_t screenY = rT->height / 2 + world.y * rT->PPWU;
+    
+    return v2i_New(screenX, screenY);
 }
 
-triangle2i triangleToScreen(model3D* m, triangle3i t3, renderTarget* rT){
+static inline triangle2i triangleToScreen(model3D* m, triangle3i t3, renderTarget* rT){
     v2i a = vertexToScreen(m, m->v.items[t3.vertices[0]], rT);
     v2i b = vertexToScreen(m, m->v.items[t3.vertices[1]], rT);
     v2i c = vertexToScreen(m, m->v.items[t3.vertices[2]], rT);

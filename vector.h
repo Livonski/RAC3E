@@ -7,13 +7,12 @@
 typedef int32_t  vectorSize;
 
 //Math utils
-#define PI 3.14159265358979323846f
-#define DEG_TO_RAD (PI / 180.0f)
-
 #define MIN_VALUE(a, b) ((a) < (b) ? (a) : (b))
 #define MAX_VALUE(a, b) ((a) > (b) ? (a) : (b))
 #define clamp(minValue, maxValue, value) \
     MAX_VALUE((minValue), MIN_VALUE((maxValue), (value)))
+
+#define BASIS_SCALE 10000
 
 //Vector 3 int
 typedef struct{
@@ -87,22 +86,31 @@ static inline v3i v3i_MulS(v3i v, vectorSize s) {return v3i_New(v.x * s, v.y * s
 static inline v3i v3i_Add (v3i a, v3i b)        {return v3i_New(a.x + b.x, a.y + b.y, a.z + b.z);}
 static inline v3i v3i_Add3(v3i a, v3i b, v3i c) {return v3i_Add(v3i_Add(a, b), c);}
 
+#define bs_Center(v) if(v >= 0) {v += BASIS_SCALE / 2;} else {v -= BASIS_SCALE / 2;}
+
+static inline v3i v3i_Transform(const v3i* ihat, const v3i* jhat, const v3i* khat, v3i v){
+    int64_t x = (int64_t)ihat->x * v.x + (int64_t)jhat->x * v.y + (int64_t)khat->x * v.z;
+    int64_t y = (int64_t)ihat->y * v.x + (int64_t)jhat->y * v.y + (int64_t)khat->y * v.z;
+    int64_t z = (int64_t)ihat->z * v.x + (int64_t)jhat->z * v.y + (int64_t)khat->z * v.z;
+
+    bs_Center(x);
+    bs_Center(y);
+    bs_Center(z);
+
+    return v3i_New(x / BASIS_SCALE, y / BASIS_SCALE, z / BASIS_SCALE);
+}
 
 //v3f related stuff
 static inline v3f v3f_MulS(v3f v, float s) {return v3f_New(v.x * s, v.y * s, v.z * s);}
 static inline v3f v3f_Add (v3f a, v3f b)   {return v3f_New(a.x + b.x, a.y + b.y, a.z + b.z);}
 static inline v3f v3f_Add3(v3f a, v3f b, v3f c) {return v3f_Add(v3f_Add(a, b), c);}
 
-static inline v3f v3f_Transform(v3f* ihat, v3f* jhat, v3f* khat, v3f v){
-    return v3f_Add3(v3f_MulS(*ihat, v.x), v3f_MulS(*jhat, v.y), v3f_MulS(*khat, v.z));
-}
-
 //triangle related stuff
-bool pointInTriangle(triangle2i t, v2i p){
+static inline bool pointInTriangle(triangle2i t, v2i p){
     bool sideAB = v2i_RightSideOfLine(t.a, t.b, p);
     bool sideBC = v2i_RightSideOfLine(t.b, t.c, p);
     bool sideCA = v2i_RightSideOfLine(t.c, t.a, p);
-    return sideAB == sideBC && sideBC == sideCA;
+    return sideAB && sideBC && sideBC;
 }
 
 
